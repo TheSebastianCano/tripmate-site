@@ -1,31 +1,29 @@
 <!doctype html><html><head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TripMate</title>
-<style>
-:root{--brand:#FF385C;--ink:#222;--muted:#6b6f76;--stroke:#ebecef;--radius:16px}
-*{box-sizing:border-box} html,body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;background:#fff;color:var(--ink)}
-.wrap{max-width:1040px;margin:0 auto;padding:20px}
-.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.brand{font-weight:800}
-.card{border:1px solid var(--stroke);border-radius:16px;padding:16px;box-shadow:0 8px 28px rgba(0,0,0,.06);background:#fff}
-.input,.select{width:100%;padding:12px 14px;border:1px solid var(--stroke);border-radius:12px;font-size:16px}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 16px;border:1px solid var(--stroke);border-radius:12px;background:var(--brand);color:#fff;font-weight:700;cursor:pointer}
-.btn.ghost{background:#fff;color:#000}
-.badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--stroke);border-radius:999px;background:#fafafa;color:#444;font-size:12px}
-.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
-.col-12{grid-column:span 12}.col-6{grid-column:span 6}.col-4{grid-column:span 4}.col-8{grid-column:span 8}.col-3{grid-column:span 3}
-.muted{color:#6b6f76}
-.pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--stroke);border-radius:999px;background:#fafafa;color:#444;font-size:12px}
-hr{border:none;border-top:1px solid var(--stroke);margin:10px 0}
-.photo{width:100%;height:200px;object-fit:cover;border-radius:12px;border:1px solid var(--stroke)}
-#map{width:100%;height:320px;border-radius:16px;border:1px solid var(--stroke)}
-.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 14px;border-radius:999px;font-size:14px;display:none}
-.toast.show{display:block}
-.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
-.tab{padding:8px 12px;border:1px solid var(--stroke);border-radius:999px;background:#fff;cursor:pointer}
-.tab.active{background:var(--brand);color:#fff;border-color:transparent}
-</style>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="assets/style.css"><title>TripMate — Destination</title>
+</head><body>
+<div class="nav"><div class="brand"><span class="dot"></span> TripMate</div><a class="badge" href="login.html">← Back</a></div>
+<div class="wrap">
+  <div class="card">
+    <h2 class="section-title">Where are you going?</h2>
+    <div class="grid">
+      <div class="col-8"><label class="label">City</label><input id="dest" class="input" placeholder="Start typing…" autocomplete="off"></div>
+      <div class="col-4"><label class="label">Start date</label><input id="date" type="date" class="input"></div>
+      <div class="col-3"><label class="label">Trip length (days)</label><input id="days" type="number" min="1" max="14" value="2" class="input"></div>
+      <div class="col-9"><label class="label">Search radius (50–150 miles)</label><input id="radius" type="range" min="50" max="150" step="10" value="50" class="input"><div class="help">Radius: <b id="rval">50</b> miles</div></div>
+      <div class="col-12">
+        <div class="chips">
+          <button id="load" class="btn softer">Load Google Maps</button>
+          <span id="status" class="pill">API: Not loaded</span>
+        </div>
+      </div>
+      <div class="col-12"><div id="map"></div></div>
+    </div>
+    <div class="footerbar"><span class="muted">Step 1 / 4</span><button id="next" class="btn primary">Continue → Questions</button></div>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+
 <script>
 const TM = {
   saveKey(k){localStorage.setItem('tripmate_key',k)},
@@ -43,28 +41,11 @@ const TM = {
 };
 function toast(msg){const t=document.getElementById('toast'); if(!t) return; t.textContent=msg; t.className='toast show'; setTimeout(()=>t.className='toast',1800);}
 </script>
-</head><body>
-<div class="wrap">
-  <div class="nav"><div class="brand">TripMate — Destination</div><a class="badge" href="login.html">← Back</a></div>
-  <div class="card">
-    <div class="grid">
-      <div class="col-8"><label class="muted">Where are you going?</label><input id="dest" class="input" placeholder="Start typing a city..." autocomplete="off"></div>
-      <div class="col-4"><label class="muted">Start date</label><input id="date" type="date" class="input"></div>
-      <div class="col-3"><label class="muted">Trip length (days)</label><input id="days" type="number" min="1" max="14" value="2" class="input"></div>
-      <div class="col-9"><label class="muted">Search radius (50–150 miles)</label><input id="radius" type="range" min="50" max="150" step="10" value="50" class="input"><div><span class="pill"><b id="rval">50</b> miles</span></div></div>
-      <div class="col-12" style="display:flex;gap:8px;margin-top:8px">
-        <button id="load" class="btn">Save & Load Maps</button><span id="status" class="pill">API: Not loaded</span>
-      </div>
-      <div class="col-12"><div id="map"></div></div>
-      <div class="col-12" style="display:flex;gap:8px"><button id="next" class="btn ghost">Continue → Questions</button></div>
-    </div>
-  </div>
-</div>
-<div id="toast" class="toast"></div>
+
 <script>
 let map, placesService, autocomplete, selectedPlace;
 rval.textContent = radius.value; radius.oninput = ()=>rval.textContent=radius.value;
-function setStatus(t,good=false){status.textContent=t;status.style.background=good?'#e8fff0':'#fafafa';status.style.borderColor=good?'#c7f2d6':'#ebecef';status.style.color=good?'#0c7c3e':'#444'}
+function setStatus(t,good=false){status.textContent=t;status.style.background=good?'#e8fff0':'#F9FAFB';status.style.borderColor=good?'#c7f2d6':'var(--stroke)';status.style.color=good?'#0c7c3e':'#374151'}
 load.onclick = ()=>{ const k=TM.getKey(); if(!k) return toast('Paste your API key in Login first'); setStatus('API: Loading…'); const s=document.createElement('script'); s.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(k)+'&libraries=places&callback=initMap'; s.async=true; s.defer=true; s.onerror=()=>setStatus('API: Load error'); document.head.appendChild(s); };
 window.initMap = function(){ setStatus('API: Ready',true); map=new google.maps.Map(map,{center:{lat:30.2672,lng:-97.7431},zoom:12}); placesService=new google.maps.places.PlacesService(map); autocomplete=new google.maps.places.Autocomplete(dest,{types:['(cities)']}); autocomplete.addListener('place_changed',()=>{ selectedPlace=autocomplete.getPlace(); if(!selectedPlace.geometry) return; map.setCenter(selectedPlace.geometry.location); map.setZoom(12); }); };
 next.onclick = ()=>{ if(!selectedPlace) return toast('Pick a destination'); const trip=TM.getTrip(); trip.destination={name:selectedPlace.formatted_address||selectedPlace.name, lat:selectedPlace.geometry.location.lat(), lng:selectedPlace.geometry.location.lng()}; trip.startDate=date.value||new Date().toISOString().slice(0,10); trip.days=Math.max(1,Math.min(14,parseInt(days.value||'2',10))); trip.radiusMiles=parseInt(radius.value,10); TM.saveTrip(trip); TM.saveItin({}); location.href='questions.html'; };
