@@ -1,0 +1,165 @@
+<!doctype html><html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TripMate</title>
+<style>
+:root{--brand:#FF385C;--ink:#222;--muted:#6b6f76;--stroke:#ebecef;--radius:16px}
+*{box-sizing:border-box} html,body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;background:#fff;color:var(--ink)}
+.wrap{max-width:1040px;margin:0 auto;padding:20px}
+.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.brand{font-weight:800}
+.card{border:1px solid var(--stroke);border-radius:16px;padding:16px;box-shadow:0 8px 28px rgba(0,0,0,.06);background:#fff}
+.input,.select{width:100%;padding:12px 14px;border:1px solid var(--stroke);border-radius:12px;font-size:16px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 16px;border:1px solid var(--stroke);border-radius:12px;background:var(--brand);color:#fff;font-weight:700;cursor:pointer}
+.btn.ghost{background:#fff;color:#000}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--stroke);border-radius:999px;background:#fafafa;color:#444;font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
+.col-12{grid-column:span 12}.col-6{grid-column:span 6}.col-4{grid-column:span 4}.col-8{grid-column:span 8}.col-3{grid-column:span 3}
+.muted{color:#6b6f76}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--stroke);border-radius:999px;background:#fafafa;color:#444;font-size:12px}
+hr{border:none;border-top:1px solid var(--stroke);margin:10px 0}
+.photo{width:100%;height:200px;object-fit:cover;border-radius:12px;border:1px solid var(--stroke)}
+#map{width:100%;height:320px;border-radius:16px;border:1px solid var(--stroke)}
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 14px;border-radius:999px;font-size:14px;display:none}
+.toast.show{display:block}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.tab{padding:8px 12px;border:1px solid var(--stroke);border-radius:999px;background:#fff;cursor:pointer}
+.tab.active{background:var(--brand);color:#fff;border-color:transparent}
+</style>
+<script>
+const TM = {
+  saveKey(k){localStorage.setItem('tripmate_key',k)},
+  getKey(){return localStorage.getItem('tripmate_key')||''},
+  saveUser(u){localStorage.setItem('tripmate_user', JSON.stringify(u))},
+  getUser(){try{return JSON.parse(localStorage.getItem('tripmate_user')||'{}')}catch(e){return {}}},
+  saveTrip(t){localStorage.setItem('tripmate_trip', JSON.stringify(t))},
+  getTrip(){try{return JSON.parse(localStorage.getItem('tripmate_trip')||'{}')}catch(e){return {}}},
+  savePrefs(p){localStorage.setItem('tripmate_prefs', JSON.stringify(p))},
+  getPrefs(){try{return JSON.parse(localStorage.getItem('tripmate_prefs')||'{}')}catch(e){return {}}},
+  saveChosen(c){localStorage.setItem('tripmate_chosen', JSON.stringify(c||[]))},
+  getChosen(){try{return JSON.parse(localStorage.getItem('tripmate_chosen')||'[]')}catch(e){return []}},
+  saveItin(i){localStorage.setItem('tripmate_itinerary', JSON.stringify(i||{}))},
+  getItin(){try{return JSON.parse(localStorage.getItem('tripmate_itinerary')||'{}')}catch(e){return {}}},
+};
+function toast(msg){const t=document.getElementById('toast'); if(!t) return; t.textContent=msg; t.className='toast show'; setTimeout(()=>t.className='toast',1800);}
+</script>
+
+<style>
+.schedule{display:grid;grid-template-columns:120px 1fr;gap:10px}
+.slot{border:1px dashed var(--stroke);border-radius:12px;padding:10px;min-height:70px}
+.cardlet{border:1px solid var(--stroke);border-radius:10px;padding:8px;margin:6px 0;background:#fff;display:flex;gap:8px;align-items:center}
+.cardlet img{width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--stroke)}
+.footerbar{position:sticky;bottom:0;left:0;right:0;display:flex;gap:8px;justify-content:space-between;background:#fff;padding:10px;border-top:1px solid var(--stroke)}
+.slot.highlight{background:#fff6f7}
+</style>
+</head><body>
+<div class="wrap">
+  <div class="nav"><div class="brand">TripMate — Itinerary</div><a class="badge" href="select.html">← Back</a></div>
+
+  <div class="card">
+    <div class="grid">
+      <div class="col-6"><div class="muted">Destination</div><b id="dest"></b></div>
+      <div class="col-3"><div class="muted">Start date</div><b id="date"></b></div>
+      <div class="col-3"><div class="muted">Start time</div><input id="start" type="time" class="input" value="09:00"></div>
+    </div>
+    <div class="tabs" id="dayTabs"></div>
+  </div>
+
+  <div style="height:8px"></div>
+  <div class="card">
+    <h3 style="margin:0" id="dayTitle">Day 1</h3>
+    <div class="schedule">
+      <div class="muted">Breakfast / Coffee</div><div id="slot-am" class="slot" data-slot="am"></div>
+      <div class="muted">Lunch</div><div id="slot-lunch" class="slot" data-slot="lunch"></div>
+      <div class="muted">Afternoon</div><div id="slot-pm" class="slot" data-slot="pm"></div>
+      <div class="muted">Dinner</div><div id="slot-dinner" class="slot" data-slot="dinner"></div>
+      <div class="muted">Evening</div><div id="slot-night" class="slot" data-slot="night"></div>
+    </div>
+  </div>
+
+  <div class="footerbar">
+    <div style="display:flex;gap:8px">
+      <button id="prevDay" class="btn ghost">← Previous day</button>
+      <button id="nextDay" class="btn ghost">Next day →</button>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button id="save" class="btn">Save itinerary</button>
+      <button id="export" class="btn ghost">Export JSON</button>
+    </div>
+  </div>
+</div>
+<a id="download" style="display:none"></a>
+<div id="toast" class="toast"></div>
+<script>
+const trip=TM.getTrip(); const chosen=TM.getChosen();
+if(!trip.destination||!chosen.length) location.href='select.html';
+dest.textContent=trip.destination.name; date.textContent=trip.startDate;
+let currentDay=0; const totalDays = Math.max(1, trip.days||1);
+const itin = TM.getItin(); // { dayIndex: {am:[], lunch:[], ...} }
+
+function dayDate(i){ const d=new Date(trip.startDate); d.setDate(d.getDate()+i); return d.toISOString().slice(0,10); }
+
+function renderTabs(){
+  const tabs=document.getElementById('dayTabs'); tabs.innerHTML='';
+  for(let i=0;i<totalDays;i++){ const t=document.createElement('div'); t.className='tab'+(i===currentDay?' active':''); t.textContent='Day '+(i+1)+' • '+dayDate(i); t.onclick=()=>{ saveDay(); currentDay=i; renderTabs(); loadDay(); }; tabs.appendChild(t); }
+  document.getElementById('dayTitle').textContent='Day '+(currentDay+1)+' • '+dayDate(currentDay);
+}
+renderTabs();
+
+function slotEl(id){ return document.querySelector('[data-slot="'+id+'"]'); }
+['am','lunch','pm','dinner','night'].forEach(s=>{
+  const el=slotEl(s);
+  el.addEventListener('dragover', e=>{e.preventDefault(); el.classList.add('highlight');});
+  el.addEventListener('dragleave', ()=>el.classList.remove('highlight'));
+  el.addEventListener('drop', e=>{e.preventDefault(); el.classList.remove('highlight'); const pid=e.dataTransfer.getData('text/plain'); const node=document.querySelector('[data-pid="'+pid+'"]'); if(node) el.appendChild(node); });
+});
+
+function createCard(p){ const d=document.createElement('div'); d.className='cardlet'; d.draggable=true; d.dataset.pid=p.place_id||p.name; const img=document.createElement('img'); const ph=(p.photos&&p.photos[0]&&p.photos[0].getUrl)?p.photos[0].getUrl({maxWidth:200}):(p.photo||''); if(ph) img.src=ph; else img.style.display='none'; const info=document.createElement('div'); info.style.flex='1'; info.innerHTML='<b>'+ (p.name||'Place') +'</b><br><span class="muted">'+(p.addr||'')+'</span>'; const a=document.createElement('a'); a.href=p.link||'#'; a.target='_blank'; a.className='badge'; a.textContent='Map'; d.appendChild(img); d.appendChild(info); d.appendChild(a); d.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',d.dataset.pid); setTimeout(()=>d.style.opacity=.3)}); d.addEventListener('dragend',()=>d.style.opacity=1); return d; }
+
+function clearSlots(){ ['am','lunch','pm','dinner','night'].forEach(s=>slotEl(s).innerHTML=''); }
+
+function seedIfEmpty(){
+  // Put a few default choices on the first load of a new day
+  const used = new Set();
+  function pick(typeKeyword, fallbackSlot){
+    const p = chosen.find(c => !used.has(c.place_id) && ((c.types||[]).includes(typeKeyword) || (c.name||'').toLowerCase().includes(typeKeyword)));
+    if(p){ used.add(p.place_id); slotEl(fallbackSlot).appendChild(createCard(p)); }
+  }
+  pick('cafe','am'); pick('restaurant','lunch'); pick('tourist_attraction','pm'); pick('restaurant','dinner'); pick('bar','night');
+}
+
+function saveDay(){
+  const day = { };
+  ['am','lunch','pm','dinner','night'].forEach(s=>{ day[s]=Array.from(slotEl(s).children).map(x=>x.querySelector('b').textContent); });
+  const all = TM.getItin(); all[currentDay]=day; TM.saveItin(all);
+}
+
+function loadDay(){
+  clearSlots();
+  const all = TM.getItin(); const day = all[currentDay];
+  if(day){
+    const nameToPlace = {}; chosen.forEach(c=>nameToPlace[(c.name||'')]=c);
+    ['am','lunch','pm','dinner','night'].forEach(s=>{
+      (day[s]||[]).forEach(name=>{ const p=nameToPlace[name] || {name}; slotEl(s).appendChild(createCard(p)); });
+    });
+  } else {
+    seedIfEmpty();
+  }
+}
+loadDay();
+
+prevDay.onclick = ()=>{ if(currentDay>0){ saveDay(); currentDay--; renderTabs(); loadDay(); } };
+nextDay.onclick = ()=>{ if(currentDay<totalDays-1){ saveDay(); currentDay++; renderTabs(); loadDay(); } };
+
+function serializeAll(){
+  saveDay();
+  const all = TM.getItin();
+  const out = { dest: trip.destination.name, start: trip.startDate, days: totalDays, startTime: start.value, schedule: {} };
+  for(let i=0;i<totalDays;i++){ out.schedule['Day '+(i+1)+' '+dayDate(i)] = all[i] || {}; }
+  return out;
+}
+
+save.onclick = ()=>{ TM.saveTrip(Object.assign(TM.getTrip(), { itinerary: serializeAll() })); toast('Itinerary saved'); };
+export.onclick = ()=>{ const data='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(serializeAll(),null,2)); download.setAttribute('href',data); download.setAttribute('download','tripmate-itinerary.json'); download.click(); };
+</script>
+</body></html>

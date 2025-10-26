@@ -45,21 +45,28 @@ function toast(msg){const t=document.getElementById('toast'); if(!t) return; t.t
 </script>
 </head><body>
 <div class="wrap">
-  <div class="nav"><div class="brand">TripMate — Login</div><a class="badge" href="destination.html">Skip</a></div>
+  <div class="nav"><div class="brand">TripMate — Destination</div><a class="badge" href="login.html">← Back</a></div>
   <div class="card">
-    <h2 style="margin-top:0">Welcome 👋</h2>
-    <p class="muted">Enter details and paste your Google Maps API key (saved locally).</p>
     <div class="grid">
-      <div class="col-6"><label class="muted">Name</label><input id="name" class="input" placeholder="Your name"></div>
-      <div class="col-6"><label class="muted">Email (optional)</label><input id="email" class="input" placeholder="you@example.com"></div>
-      <div class="col-12"><label class="muted">Google Maps API key</label><input id="api" class="input" placeholder="AIza..."></div>
-      <div class="col-12"><button id="save" class="btn">Continue → Destination</button></div>
+      <div class="col-8"><label class="muted">Where are you going?</label><input id="dest" class="input" placeholder="Start typing a city..." autocomplete="off"></div>
+      <div class="col-4"><label class="muted">Start date</label><input id="date" type="date" class="input"></div>
+      <div class="col-3"><label class="muted">Trip length (days)</label><input id="days" type="number" min="1" max="14" value="2" class="input"></div>
+      <div class="col-9"><label class="muted">Search radius (50–150 miles)</label><input id="radius" type="range" min="50" max="150" step="10" value="50" class="input"><div><span class="pill"><b id="rval">50</b> miles</span></div></div>
+      <div class="col-12" style="display:flex;gap:8px;margin-top:8px">
+        <button id="load" class="btn">Save & Load Maps</button><span id="status" class="pill">API: Not loaded</span>
+      </div>
+      <div class="col-12"><div id="map"></div></div>
+      <div class="col-12" style="display:flex;gap:8px"><button id="next" class="btn ghost">Continue → Questions</button></div>
     </div>
   </div>
 </div>
 <div id="toast" class="toast"></div>
 <script>
-api.value = TM.getKey(); const u=TM.getUser(); if(u.name) name.value=u.name; if(u.email) email.value=u.email;
-save.onclick = ()=>{ TM.saveUser({name:name.value.trim(),email:email.value.trim()}); if(api.value.trim()) TM.saveKey(api.value.trim()); location.href='destination.html'; };
+let map, placesService, autocomplete, selectedPlace;
+rval.textContent = radius.value; radius.oninput = ()=>rval.textContent=radius.value;
+function setStatus(t,good=false){status.textContent=t;status.style.background=good?'#e8fff0':'#fafafa';status.style.borderColor=good?'#c7f2d6':'#ebecef';status.style.color=good?'#0c7c3e':'#444'}
+load.onclick = ()=>{ const k=TM.getKey(); if(!k) return toast('Paste your API key in Login first'); setStatus('API: Loading…'); const s=document.createElement('script'); s.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(k)+'&libraries=places&callback=initMap'; s.async=true; s.defer=true; s.onerror=()=>setStatus('API: Load error'); document.head.appendChild(s); };
+window.initMap = function(){ setStatus('API: Ready',true); map=new google.maps.Map(map,{center:{lat:30.2672,lng:-97.7431},zoom:12}); placesService=new google.maps.places.PlacesService(map); autocomplete=new google.maps.places.Autocomplete(dest,{types:['(cities)']}); autocomplete.addListener('place_changed',()=>{ selectedPlace=autocomplete.getPlace(); if(!selectedPlace.geometry) return; map.setCenter(selectedPlace.geometry.location); map.setZoom(12); }); };
+next.onclick = ()=>{ if(!selectedPlace) return toast('Pick a destination'); const trip=TM.getTrip(); trip.destination={name:selectedPlace.formatted_address||selectedPlace.name, lat:selectedPlace.geometry.location.lat(), lng:selectedPlace.geometry.location.lng()}; trip.startDate=date.value||new Date().toISOString().slice(0,10); trip.days=Math.max(1,Math.min(14,parseInt(days.value||'2',10))); trip.radiusMiles=parseInt(radius.value,10); TM.saveTrip(trip); TM.saveItin({}); location.href='questions.html'; };
 </script>
 </body></html>
