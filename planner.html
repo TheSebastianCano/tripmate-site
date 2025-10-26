@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TripMate — Planner</title>
+<meta name="description" content="TripMate Planner: paste your Google Maps API key once, then search cities and generate real itineraries.">
+<style>
+:root{--brand:#FF385C;--ink:#222;--muted:#6b6f76;--stroke:#ebecef;--radius:16px}
+*{box-sizing:border-box}
+html,body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial;background:#fff;color:var(--ink)}
+.wrap{max-width:1080px;margin:0 auto;padding:24px}
+.nav{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--stroke);border-radius:999px;background:#fafafa;color:#444;font-size:12px}
+.card{border:1px solid var(--stroke);border-radius:16px;padding:16px;box-shadow:0 8px 28px rgba(0,0,0,.06)}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
+.col-12{grid-column:span 12}.col-6{grid-column:span 6}.col-8{grid-column:span 8}.col-4{grid-column:span 4}
+.label{font-size:12px;color:var(--muted);margin-bottom:6px}
+.input,.select{width:100%;padding:13px 14px;border:1px solid var(--stroke);border-radius:12px;font-size:16px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 16px;border:1px solid var(--stroke);border-radius:12px;background:#fff;font-weight:600;text-decoration:none;color:var(--ink)}
+.btn.primary{background:var(--brand);color:#fff;border-color:transparent}
+.btn.block{width:100%}
+.item{border:1px solid var(--stroke);border-radius:14px;padding:12px;margin-top:10px;background:#fff}
+.item h4{margin:0 0 6px 0;font-size:16px}
+.muted{color:var(--muted)}
+.photo{width:100%;height:200px;object-fit:cover;border-radius:12px;border:1px solid var(--stroke)}
+#map{width:100%;height:320px;border-radius:16px;border:1px solid var(--stroke)}
+.stack{display:flex;flex-direction:column;gap:10px}
+.hint{font-size:12px;color:#8b8f97}
+@media (max-width:820px){.wrap{padding:16px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="nav">
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 3c-4.7 0-8.5 3.8-8.5 8.5S7.3 20 12 20s8.5-3.8 8.5-8.5S16.7 3 12 3zm0 2c3.6 0 6.5 2.9 6.5 6.5S15.6 18 12 18 5.5 15.1 5.5 11.5 8.4 5 12 5z" fill="#FF385C"/></svg>
+      TripMate — Planner
+    </div>
+    <a class="pill" href="index.html">← Home</a>
+  </div>
+
+  <div class="card">
+    <div class="label">Paste your Google Maps API key (saved in your browser only)</div>
+    <div class="grid">
+      <div class="col-8"><input id="apiKey" class="input" placeholder="AIza... your key"></div>
+      <div class="col-4 stack">
+        <button id="saveKey" class="btn primary">Save & Load Maps</button>
+        <button id="clearKey" class="btn">Clear</button>
+      </div>
+      <div class="col-12"><span id="apiStatus" class="pill">API: Not loaded</span></div>
+    </div>
+  </div>
+
+  <div style="height:8px"></div>
+
+  <div class="card">
+    <div class="grid">
+      <div class="col-8">
+        <div class="label">Destination</div>
+        <input id="dest" class="input" placeholder="Start typing a city (e.g., Austin)" autocomplete="off">
+      </div>
+      <div class="col-4">
+        <div class="label">Pet-friendly bias</div>
+        <select id="pet" class="select">
+          <option value="no">No</option>
+          <option value="yes" selected>Yes</option>
+        </select>
+      </div>
+      <div class="col-12 stack">
+        <button id="planBtn" class="btn primary block">Generate itinerary</button>
+        <div class="hint">Pick a city from the dropdown first, then Generate.</div>
+      </div>
+      <div class="col-12">
+        <div id="map"></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:8px"></div>
+
+  <div class="card">
+    <h3 style="margin:0">Your Day Plan</h3>
+    <div id="plan" class="stack" style="margin-top:10px"></div>
+  </div>
+
+  <div style="height:8px"></div>
+  <div class="hint">We never receive your key. It is stored locally in your browser (localStorage).</div>
+</div>
+
+<script>
+// ----- API KEY HANDLING -----
+const statusEl = document.getElementById('apiStatus');
+const keyInput = document.getElementById('apiKey');
+const saveBtn = document.getElementById('saveKey');
+const clearBtn = document.getElementById('clearKey');
+const LS_KEY = 'tripmate_gmaps_key';
+
+function setStatus(text, good=false){
+  statusEl.textContent = text;
+  statusEl.style.background = good ? '#e8fff0' : '#fafafa';
+  statusEl.style.borderColor = good ? '#c7f2d6' : '#ebecef';
+  statusEl.style.color = good ? '#0c7c3e' : '#444';
+}
+
+function loadMapsWithKey(k){
+  if(!k) return;
+  if(window._mapsLoaded) return setStatus('API: Ready', true);
+  const s = document.createElement('script');
+  s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(k)}&libraries=places&callback=initMap`;
+  s.async = true; s.defer = true;
+  s.onerror = () => setStatus('API: Load error (check key)', false);
+  document.head.appendChild(s);
+}
+
+// Restore saved key if any
+const saved = localStorage.getItem(LS_KEY);
+if(saved){ keyInput.value = saved; setStatus('API: Loading…'); loadMapsWithKey(saved); }
+
+saveBtn.addEventListener('click', () => {
+  const k = keyInput.value.trim();
+  if(!k){ alert('Please paste your API key'); return; }
+  localStorage.setItem(LS_KEY, k);
+  setStatus('API: Loading…');
+  loadMapsWithKey(k);
+});
+clearBtn.addEventListener('click', () => {
+  localStorage.removeItem(LS_KEY);
+  keyInput.value = ''; setStatus('API: Not loaded'); alert('Key cleared. Paste again to reload.');
+});
+
+// ----- MAPS + PLACES -----
+let map, placesService, autocomplete, destMarker, selectedPlace;
+const planEl = document.getElementById('plan');
+
+window.initMap = function(){
+  window._mapsLoaded = true;
+  setStatus('API: Ready', true);
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: {lat: 30.2672, lng: -97.7431}, zoom: 12
+  });
+  placesService = new google.maps.places.PlacesService(map);
+
+  // Autocomplete for destination (cities)
+  const input = document.getElementById('dest');
+  autocomplete = new google.maps.places.Autocomplete(input, { types: ['(cities)'] });
+  autocomplete.addListener('place_changed', () => {
+    const place = autocomplete.getPlace();
+    if(!place.geometry || !place.geometry.location) return;
+    selectedPlace = place;
+    map.setCenter(place.geometry.location);
+    map.setZoom(13);
+    if(destMarker) destMarker.setMap(null);
+    destMarker = new google.maps.Marker({ position: place.geometry.location, map, title: place.formatted_address || place.name });
+  });
+
+  document.getElementById('planBtn').addEventListener('click', generatePlan, { passive: true });
+};
+
+function generatePlan(){
+  if(!selectedPlace){ alert('Please pick a destination from the dropdown.'); return; }
+  const loc = selectedPlace.geometry.location;
+  const biasPet = document.getElementById('pet').value === 'yes';
+
+  // Reset list + center
+  planEl.innerHTML = '';
+  map.setCenter(loc);
+
+  // Search blocks
+  const blocks = [
+    {label: 'Coffee', type: 'cafe', icon:'☕', keyword: biasPet ? 'pet friendly patio' : ''},
+    {label: 'Lunch', type: 'restaurant', icon:'🍽️', keyword: biasPet ? 'dog friendly patio' : ''},
+    {label: 'Afternoon', type: 'tourist_attraction', icon:'🎨', keyword: biasPet ? 'outdoor park' : ''},
+    {label: 'Dinner', type: 'restaurant', icon:'🍔', keyword: biasPet ? 'dog friendly patio' : ''},
+    {label: 'Evening', type: 'bar', icon:'🌇', keyword: biasPet ? 'outdoor live music' : ''}
+  ];
+
+  // Sequentially fetch and render
+  blocks.reduce((p, block, idx) => {
+    return p.then(() => nearbyPick(loc, block, idx).then(card => planEl.appendChild(card)));
+  }, Promise.resolve());
+}
+
+function nearbyPick(location, block, idx){
+  return new Promise((resolve) => {
+    const request = {
+      location, radius: 4000, type: block.type, keyword: block.keyword || undefined, openNow: false
+    };
+    placesService.nearbySearch(request, (results, status) => {
+      if (status !== google.maps.places.PlacesServiceStatus.OK || !results?.length) {
+        resolve(renderCard(block, null)); return;
+      }
+      const sorted = results
+        .filter(r => !('business_status' in r && r.business_status === 'CLOSED_PERMANENTLY'))
+        .sort((a,b) => (b.rating||0) - (a.rating||0));
+      const top = sorted[0];
+      placesService.getDetails({ placeId: top.place_id, fields: ['name','rating','formatted_address','photos','url','website','geometry']}, (detail, st) => {
+        if (st === google.maps.places.PlacesServiceStatus.OK && detail) {
+          new google.maps.Marker({ position: detail.geometry.location, map, title: detail.name });
+          resolve(renderCard(block, detail));
+        } else {
+          resolve(renderCard(block, top));
+        }
+      });
+    });
+  });
+}
+
+function renderCard(block, place){
+  const div = document.createElement('div');
+  div.className = 'item';
+
+  if (!place){
+    div.innerHTML = `<h4>${block.icon} ${block.label}</h4><div class="muted">No results. Try again or change filters.</div>`;
+    return div;
+  }
+
+  let photoUrl = '';
+  if (place.photos && place.photos.length){
+    photoUrl = place.photos[0].getUrl({maxWidth: 1200, maxHeight: 900});
+  }
+
+  const name = place.name || 'Unknown place';
+  const rating = place.rating ? ` • ${place.rating.toFixed(1)} ★` : '';
+  const addr = place.formatted_address || '';
+  const gmapsLink = place.url || (name ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name + ' ' + addr)}` : '#');
+
+  div.innerHTML = `
+    ${photoUrl ? `<img class="photo" src="${photoUrl}" alt="${name}">` : ''}
+    <h4>${block.icon} ${name}${rating}</h4>
+    ${addr ? `<div class="muted">${addr}</div>` : ''}
+    <div class="stack" style="flex-direction:row;gap:8px;margin-top:8px">
+      <a class="btn" href="${gmapsLink}" target="_blank" rel="noopener">Open in Maps</a>
+      <a class="btn" href="https://www.airbnb.com/s/homes?query=${encodeURIComponent(addr || name)}" target="_blank" rel="noopener">Stays nearby</a>
+    </div>
+  `;
+  return div;
+}
+</script>
+</body>
+</html>
