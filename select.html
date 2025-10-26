@@ -1,30 +1,33 @@
 <!doctype html><html><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="assets/style.css"><title>TripMate — Select Places</title>
+<link rel="stylesheet" href="assets/style.css"><title>TripMate — Top Places</title>
 </head><body>
 <div class="nav"><div class="brand"><span class="dot"></span> TripMate</div><a class="badge" href="questions.html">← Back</a></div>
 <div class="wrap">
   <div class="card">
+    <div class="section-title">Top places near your destination</div>
     <div class="grid">
-      <div class="col-8"><div class="section-title" id="destName"></div><div class="muted">Use the radius and category to explore top places.</div></div>
+      <div class="col-8"><div class="muted" id="destInfo"></div></div>
       <div class="col-4"><label class="label">Radius: <b id="rmi"></b> miles</label><input id="radius" type="range" min="50" max="150" step="10" class="input"></div>
-      <div class="col-12" style="display:flex;gap:8px;flex-wrap:wrap;">
+      <div class="col-12" style="display:flex;gap:8px;flex-wrap:wrap">
         <select id="cat" class="select" style="max-width:260px">
-          <option value="tourist_attraction">Top attractions</option>
-          <option value="park">Parks & hikes</option>
-          <option value="museum">Museums</option>
-          <option value="art_gallery">Art galleries</option>
-          <option value="shopping_mall">Shopping</option>
-          <option value="restaurant">Restaurants</option>
-          <option value="cafe">Cafes</option>
-          <option value="bar">Bars</option>
+          <option value="tourist_attraction">Top attractions</option><option value="park">Parks & hikes</option>
+          <option value="museum">Museums</option><option value="art_gallery">Art galleries</option>
+          <option value="shopping_mall">Shopping</option><option value="restaurant">Restaurants</option>
+          <option value="cafe">Cafes</option><option value="bar">Bars</option>
         </select>
         <button id="search" class="btn primary">Search</button>
         <button id="selectAll" class="btn ghost">Select all (toggle)</button>
         <span id="count" class="badge">0 selected</span>
-        <button id="next" class="btn ghost" style="margin-left:auto">Continue → Build itinerary</button>
       </div>
-      <div class="col-12"><div id="map"></div></div>
+      <div class="col-12">
+        <label class="label">Add a specific place by name</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input id="manual" class="input" placeholder="Ex: The Getty Center">
+          <button id="addManual" class="btn ghost">Add</button>
+        </div>
+      </div>
+      <div class="col-12"><div id="map"></"></div></div>
     </div>
   </div>
   <div style="height:8px"></div>
@@ -33,7 +36,7 @@
     <div id="results" style="display:flex;flex-direction:column;gap:10px;margin-top:10px"></div>
   </div>
 </div>
-<div class="footerbar"><span class="muted">Step 3 / 4</span><button id="nextBottom" class="btn primary">Continue →</button></div>
+<div class="footerbar"><span class="muted">Step 3 / 4</span><button id="next" class="btn primary">Continue → Build itinerary</button></div>
 <div id="toast" class="toast"></div>
 
 <script>
@@ -55,22 +58,18 @@ function toast(msg){const t=document.getElementById('toast'); if(!t) return; t.t
 </script>
 
 <script>
-const trip=TM.getTrip(); if(!trip.destination) location.href='destination.html'; destName.textContent=trip.destination.name;
+const trip=TM.getTrip(); if(!trip.destination) location.href='index.html';
+destInfo.textContent = trip.destination.name + ' • ' + (trip.startDate||'') + (trip.endDate?(' → '+trip.endDate):'');
 radius.value=trip.radiusMiles||50; rmi.textContent=radius.value; radius.oninput=()=>{ rmi.textContent=radius.value; trip.radiusMiles=parseInt(radius.value,10); TM.saveTrip(trip); };
 let map, placesService, lastResults=[];
-(function load(){ const k=TM.getKey(); if(!k) return toast('Paste API key in Login'); const s=document.createElement('script'); s.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(k)+'&libraries=places&callback=initMap'; s.async=true; s.defer=true; document.head.appendChild(s); })();
+(function load(){ const k=TM.getKey(); if(!k) {toast('Paste API key on Welcome'); return;} const s=document.createElement('script'); s.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(k)+'&libraries=places&callback=initMap'; s.async=true; s.defer=true; document.head.appendChild(s); })();
 window.initMap=function(){ map=new google.maps.Map(map,{center:{lat:trip.destination.lat,lng:trip.destination.lng},zoom:10}); placesService=new google.maps.places.PlacesService(map); };
-const chosen=new Map(TM.getChosen().map(x=>[x.place_id,x])); function updateCount(){count.textContent=chosen.size+' selected'; TM.saveChosen(Array.from(chosen.values()));} updateCount();
-
-function cardFor(r){ const img=r.photos&&r.photos[0]?r.photos[0].getUrl({maxWidth:400}):''; const addr=r.vicinity||''; const link='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(r.name+' '+addr); const card=document.createElement('div'); card.className='item'; const btn=document.createElement('button'); btn.className='btn ghost'; btn.textContent=chosen.has(r.place_id)?'Remove':'Add'; btn.onclick=()=>{ if(chosen.has(r.place_id)){chosen.delete(r.place_id);btn.textContent='Add';} else {chosen.set(r.place_id, Object.assign({}, r, {addr,link})); btn.textContent='Remove';} updateCount(); }; card.innerHTML=(img?('<img src="'+img+'">'):'<div></div>')+'<div><div class="title">'+r.name+'</div><div class="chips" style="margin-top:4px"><span class="pill rating">'+(r.rating||'N/A')+' ★</span><span class="pill">'+(addr||'')+'</span></div></div>'; card.appendChild(btn); return card; }
-
+const chosen=new Map(TM.getChosen().map(x=>[x.place_id||x.name,x])); function updateCount(){count.textContent=chosen.size+' selected'; TM.saveChosen(Array.from(chosen.values()));} updateCount();
+function cardFor(r){ const img=r.photos&&r.photos[0]?r.photos[0].getUrl({maxWidth:400}):(r.photo||''); const addr=r.vicinity||r.addr||''; const link=r.link || ('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent((r.name||'')+' '+addr)); const pid=r.place_id||r.name; const card=document.createElement('div'); card.className='item'; const btn=document.createElement('button'); btn.className='btn ghost'; btn.textContent=chosen.has(pid)?'Remove':'Add'; btn.onclick=()=>{ if(chosen.has(pid)){chosen.delete(pid);btn.textContent='Add';} else {chosen.set(pid, Object.assign({}, r, {addr,link})); btn.textContent='Remove';} updateCount(); }; card.innerHTML=(img?('<img src="'+img+'">'):'<div></div>')+'<div><div class="title">'+(r.name||'')+'</div><div class="chips" style="margin-top:4px"><span class="pill">'+(addr||'')+'</span></div></div>'; card.appendChild(btn); return card; }
 function renderResults(res){ results.innerHTML=''; lastResults = res.slice(0,30); lastResults.forEach(r=>results.appendChild(cardFor(r))); }
-
 search.onclick=()=>{ const type=cat.value; const meters=parseInt(radius.value,10)*1609; const req={location:new google.maps.LatLng(trip.destination.lat,trip.destination.lng), radius:Math.min(meters,50000), type}; results.innerHTML='Searching…'; placesService.nearbySearch(req,(res,st)=>{ if(st!==google.maps.places.PlacesServiceStatus.OK||!res||!res.length){results.innerHTML='<div class="muted">No results.</div>';return;} res.sort((a,b)=>(b.rating||0)-(a.rating||0)); renderResults(res); }); };
-
-selectAll.onclick=()=>{ if(!lastResults.length){ toast('Search first'); return; } let adding=0, removing=0; lastResults.forEach(r=>{ if(chosen.has(r.place_id)){ chosen.delete(r.place_id); removing++; } else { const addr=r.vicinity||''; const link='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(r.name+' '+addr); chosen.set(r.place_id, Object.assign({}, r, {addr,link})); adding++; } }); updateCount(); toast((adding?('Added '+adding):('Removed '+removing))+' places'); renderResults(lastResults); };
-
-function goNext(){ if(chosen.size===0) return toast('Select at least 1 place'); TM.saveChosen(Array.from(chosen.values())); location.href='itinerary.html'; }
-next.onclick=goNext; nextBottom.onclick=goNext;
+selectAll.onclick=()=>{ if(!lastResults.length){ toast('Search first'); return; } let adding=0, removing=0; lastResults.forEach(r=>{ const pid=r.place_id; if(chosen.has(pid)){ chosen.delete(pid); removing++; } else { const addr=r.vicinity||''; const link='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(r.name+' '+addr); chosen.set(pid, Object.assign({}, r, {addr,link})); adding++; } }); updateCount(); toast((adding?('Added '+adding):('Removed '+removing))+' places'); renderResults(lastResults); };
+addManual.onclick=()=>{ const q=manual.value.trim(); if(!q) return; const req={query:q, location:new google.maps.LatLng(trip.destination.lat,trip.destination.lng), radius:50000}; placesService.textSearch(req,(res,st)=>{ if(st!==google.maps.places.PlacesServiceStatus.OK||!res||!res.length){ toast('No match found'); return; } const pick=res[0]; const r={name:pick.name, addr:pick.formatted_address||'', place_id:pick.place_id, photo: (pick.photos&&pick.photos[0])?pick.photos[0].getUrl({maxWidth:400}):''}; chosen.set(r.place_id,r); updateCount(); results.prepend(cardFor(r)); manual.value=''; }); };
+next.onclick=()=>{ if(chosen.size===0) return toast('Select at least 1 place'); TM.saveChosen(Array.from(chosen.values())); location.href='itinerary.html'; };
 </script>
 </body></html>

@@ -1,16 +1,23 @@
 <!doctype html><html><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="assets/style.css"><title>TripMate — Questions</title>
+<link rel="stylesheet" href="assets/style.css"><title>TripMate — Profile & Questions</title>
 </head><body>
-<div class="nav"><div class="brand"><span class="dot"></span> TripMate</div><a class="badge" href="destination.html">← Back</a></div>
+<div class="nav"><div class="brand"><span class="dot"></span> TripMate</div><a class="badge" href="index.html">← Back</a></div>
 <div class="wrap">
   <div class="card">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-      <div><div class="section-title" id="title">Tell us what you like</div><div class="muted" id="destInfo"></div></div>
-      <div class="progress" id="progress"></div>
+    <div class="section-title">Create your profile</div>
+    <div class="grid">
+      <div class="col-6"><label class="label">Name</label><input id="name" class="input" placeholder="Your name"></div>
+      <div class="col-6"><label class="label">Email</label><input id="email" class="input" placeholder="you@example.com"></div>
+      <div class="col-12"><label class="label">Password (local demo)</label><input id="pwd" type="password" class="input" placeholder="Make it simple for now"></div>
     </div>
-    <div id="steps"></div>
-    <div class="footerbar"><button id="back" class="btn ghost">← Back</button><button id="next" class="btn primary">Next →</button></div>
+  </div>
+
+  <div style="height:8px"></div>
+  <div class="card">
+    <div class="section-title">Tell us what you like</div>
+    <div id="qbox"></div>
+    <div class="footerbar"><span class="muted">Step 2 / 4</span><button id="next" class="btn primary">Continue → Top places</button></div>
   </div>
 </div>
 <div id="toast" class="toast"></div>
@@ -34,44 +41,23 @@ function toast(msg){const t=document.getElementById('toast'); if(!t) return; t.t
 </script>
 
 <script>
-const trip=TM.getTrip(); if(!trip.destination) location.href='destination.html';
-destInfo.textContent = 'Planning for '+trip.destination.name+' • '+trip.days+' day(s)';
-const q = [
+const trip=TM.getTrip(); if(!trip.destination) location.href='index.html';
+const prefs=TM.getPrefs(); const user=TM.getUser(); name.value=user.name||''; email.value=user.email||'';
+const qs=[
   {k:'petFriendly', t:'Traveling with a pet?', type:'single', opts:['Yes','No','Sometimes']},
-  {k:'mornings', t:'Morning style', type:'single', opts:['Early (7–8am)','Balanced (9–10am)','Sleep in (10–11am)']},
-  {k:'breakfast', t:'Breakfast?', type:'single', opts:['Yes, sit-down','Quick coffee','No breakfast']},
-  {k:'localVibes', t:'Local picks: what sounds fun here?', type:'multi', opts:['Beaches','Hikes','Museums','Live music','Architecture','Street food']},
-  {k:'coffee', t:'Coffee vibe', type:'multi', opts:['Third-wave cafes','Classic diners','Local roasters','Tea instead']},
-  {k:'food', t:'Foods you’re excited about', type:'multi', opts:['Tacos','Sushi','BBQ','Italian','Vegan/veg','Michelin']},
-  {k:'night', t:'Evening energy', type:'multi', opts:['Craft cocktails','Live music','Chill wine bar','Rooftop views','Skip nightlife']},
-  {k:'activities', t:'Activities', type:'multi', opts:['Hiking','Museums','Architecture','Street art','Shopping','Beaches','Running','Dog parks']},
-  {k:'pace', t:'Day pace', type:'single', opts:['Relaxed (3–4 stops)','Balanced (5–6)','Max explore (7–8)']},
-  {k:'meals', t:'Preferred meal times', type:'multi', opts:['Breakfast 8–9','Brunch 10–11','Lunch 12–1','Coffee 2–3','Dinner 6–7','Late dinner 8–9']},
-  {k:'budget', t:'Budget per meal', type:'single', opts:['$','$$','$$$','Mix']},
+  {k:'coffee', t:'Coffee stops?', type:'single', opts:['Love cafes','Sometimes','Skip coffee']},
+  {k:'shopping', t:'Shopping interest', type:'single', opts:['Boutiques','Malls','Vintage','Not really']},
+  {k:'activities', t:'Activities that excite you', type:'multi', opts:['Hiking','Museums','Street art','Architecture','Beaches','Live music','Sports','Dog parks']},
+  {k:'food', t:'Food focus', type:'multi', opts:['Tacos','Sushi','BBQ','Italian','Vegan/veg','Michelin']},
+  {k:'night', t:'Evenings', type:'multi', opts:['Craft cocktails','Chill wine bar','Rooftop views','Live music','Skip nightlife']},
+  {k:'pace', t:'Pace of the day', type:'single', opts:['Relaxed (3–4 stops)','Balanced (5–6)','Max explore (7–8)']},
+  {k:'meals', t:'When do you want meals?', type:'multi', opts:['Breakfast 8–9','Brunch 10–11','Lunch 12–1','Coffee 2–3','Dinner 6–7','Late dinner 8–9']},
   {k:'walk', t:'Comfortable walking distance', type:'single', opts:['5–10 min','10–20 min','30+ min']},
   {k:'transport', t:'Main transportation', type:'single', opts:['Driving','Rideshare/Taxi','Public transit','Walking mostly']},
 ];
-const prefs = TM.getPrefs(); let idx=0;
-const steps = document.getElementById('steps'); const progress = document.getElementById('progress');
-function renderDots(){ progress.innerHTML=''; q.forEach((_,i)=>{ const d=document.createElement('div'); d.className='dot'+(i<=idx?' active':''); progress.appendChild(d); }); }
-function renderStep(){
-  renderDots();
-  const row = q[idx];
-  steps.innerHTML = '<div class="section-title">'+row.t+'</div><div class="chips" id="opts"></div>';
-  const box = document.getElementById('opts');
-  row.opts.forEach(opt=>{
-    const b=document.createElement('button'); b.className='pill'; b.textContent=opt;
-    const val=prefs[row.k]; if((row.type==='single' && val===opt) || (Array.isArray(val)&&val.includes(opt))) b.classList.add('sel');
-    b.onclick=()=>{
-      if(row.type==='single'){ box.querySelectorAll('.pill').forEach(p=>p.classList.remove('sel')); b.classList.add('sel'); prefs[row.k]=opt; }
-      else{ b.classList.toggle('sel'); const set=new Set(Array.isArray(prefs[row.k])?prefs[row.k]:[]); if(b.classList.contains('sel')) set.add(opt); else set.delete(opt); prefs[row.k]=Array.from(set); }
-      TM.savePrefs(prefs);
-    };
-    box.appendChild(b);
-  });
-}
-renderStep();
-back.onclick = ()=>{ if(idx>0){ idx--; renderStep(); } else { history.back(); } };
-next.onclick = ()=>{ if(idx<q.length-1){ idx++; renderStep(); } else { TM.savePrefs(prefs); location.href='select.html'; } };
+function chip(text, selected){ const b=document.createElement('button'); b.className='pill'+(selected?' sel':''); b.textContent=text; return b; }
+function render(){ qbox.innerHTML=''; qs.forEach(row=>{ const sec=document.createElement('div'); sec.style.margin='8px 0 14px'; const title=document.createElement('div'); title.className='label'; title.textContent=row.t; const box=document.createElement('div'); box.className='chips'; const val=prefs[row.k]||(row.type==='multi'?[]:''); row.opts.forEach(o=>{const b=chip(o, (row.type==='single'? val===o : (Array.isArray(val)&&val.includes(o)))); b.onclick=()=>{ if(row.type==='single'){ box.querySelectorAll('.pill').forEach(p=>p.classList.remove('sel')); b.classList.add('sel'); prefs[row.k]=o; } else { b.classList.toggle('sel'); const set=new Set(Array.isArray(prefs[row.k])?prefs[row.k]:[]); if(b.classList.contains('sel')) set.add(o); else set.delete(o); prefs[row.k]=Array.from(set);} TM.savePrefs(prefs); }; box.appendChild(b); }); sec.appendChild(title); sec.appendChild(box); qbox.appendChild(sec); }); }
+render();
+next.onclick=()=>{ TM.saveUser({name:name.value.trim(),email:email.value.trim()}); if(!TM.getKey()) return toast('Add your Google Maps API key on the welcome page'); location.href='select.html'; };
 </script>
 </body></html>

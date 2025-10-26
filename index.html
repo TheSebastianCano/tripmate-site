@@ -1,12 +1,61 @@
-<!doctype html>
-<html>
-  <head>
-    <meta http-equiv="refresh" content="0; url=login.html">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>TripMate</title>
-    <link rel="stylesheet" href="assets/style.css">
-  </head>
-  <body>
-    <div class="wrap"><p>Redirecting to <a href="login.html">login</a>…</p></div>
-  </body>
-</html>
+<!doctype html><html><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="assets/style.css"><title>TripMate — Welcome</title>
+</head><body>
+<div class="nav"><div class="brand"><span class="dot"></span> TripMate</div><a class="badge" href="questions.html">Skip to questions</a></div>
+<div class="wrap hero">
+  <h1>Plan trips that feel made for you.</h1>
+  <p class="sub">TripMate builds a custom itinerary from your preferences — coffee, hikes, dog-friendly spots, food and nightlife — and suggests stays near everything.</p>
+  <div class="card" style="margin-top:18px">
+    <div class="section-title">Start your trip</div>
+    <div class="grid">
+      <div class="col-6"><label class="label">Destination</label><input id="dest" class="input" placeholder="Search a city…" autocomplete="off"></div>
+      <div class="col-3"><label class="label">Check-in</label><input id="checkin" type="date" class="input"></div>
+      <div class="col-3"><label class="label">Check-out</label><input id="checkout" type="date" class="input"></div>
+      <div class="col-12"><label class="label">Search radius (50–150 miles)</label><input id="radius" type="range" min="50" max="150" step="10" value="50" class="input"><div class="help">Radius: <b id="rval">50</b> miles</div></div>
+      <div class="col-12"><label class="label">Google Maps API key</label><input id="api" class="input" placeholder="Paste your AIza... key (stored locally)"></div>
+      <div class="col-12"><button id="load" class="btn ghost">Load Google Maps</button></div>
+      <div class="col-12"><div id="map"></div></div>
+      <div class="col-12"><button id="continue" class="btn primary block">Continue → Questions</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <div class="grid">
+      <div class="col-4"><div class="section-title">Pet‑friendly</div><div class="muted">Find cafes, parks and stays that welcome your buddy.</div></div>
+      <div class="col-4"><div class="section-title">Local flavor</div><div class="muted">Top‑rated food, coffee and nightlife in one place.</div></div>
+      <div class="col-4"><div class="section-title">Smarter routes</div><div class="muted">Keep everything within your walking/drive comfort.</div></div>
+    </div>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+const TM = {
+  saveKey(k){localStorage.setItem('tripmate_key',k)},
+  getKey(){return localStorage.getItem('tripmate_key')||''},
+  saveUser(u){localStorage.setItem('tripmate_user', JSON.stringify(u))},
+  getUser(){try{return JSON.parse(localStorage.getItem('tripmate_user')||'{}')}catch(e){return {}}},
+  saveTrip(t){localStorage.setItem('tripmate_trip', JSON.stringify(t))},
+  getTrip(){try{return JSON.parse(localStorage.getItem('tripmate_trip')||'{}')}catch(e){return {}}},
+  savePrefs(p){localStorage.setItem('tripmate_prefs', JSON.stringify(p))},
+  getPrefs(){try{return JSON.parse(localStorage.getItem('tripmate_prefs')||'{}')}catch(e){return {}}},
+  saveChosen(c){localStorage.setItem('tripmate_chosen', JSON.stringify(c||[]))},
+  getChosen(){try{return JSON.parse(localStorage.getItem('tripmate_chosen')||'[]')}catch(e){return []}},
+  saveItin(i){localStorage.setItem('tripmate_itinerary', JSON.stringify(i||{}))},
+  getItin(){try{return JSON.parse(localStorage.getItem('tripmate_itinerary')||'{}')}catch(e){return {}}},
+};
+function toast(msg){const t=document.getElementById('toast'); if(!t) return; t.textContent=msg; t.className='toast show'; setTimeout(()=>t.className='toast',1800);}
+</script>
+
+<script>
+let map, autocomplete, selectedPlace;
+rval.textContent=radius.value; radius.oninput=()=>rval.textContent=radius.value;
+api.value = TM.getKey();
+function ensureMaps(cb){ const k=api.value.trim()||TM.getKey(); if(!k){toast('Paste your Google Maps API key'); return;} TM.saveKey(k); if(window.google && google.maps){ cb(); return;} const s=document.createElement('script'); s.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(k)+'&libraries=places&callback=mapsReady'; s.async=true; s.defer=true; window.mapsReady=cb; document.head.appendChild(s); }
+load.onclick=()=>ensureMaps(()=>{ map=new google.maps.Map(map,{center:{lat:30.2672,lng:-97.7431},zoom:11}); autocomplete=new google.maps.places.Autocomplete(dest,{types:['(cities)']}); autocomplete.addListener('place_changed',()=>{ selectedPlace=autocomplete.getPlace(); if(selectedPlace.geometry){ map.setCenter(selectedPlace.geometry.location); map.setZoom(12);} }); });
+continue.onclick=()=>{ if(!selectedPlace){toast('Choose a destination first'); return;} const cin=checkin.value||new Date().toISOString().slice(0,10); const cout=checkout.value||cin; const days=Math.max(1, Math.round((new Date(cout)-new Date(cin))/(1000*60*60*24)) || 1); const trip={ destination:{ name:selectedPlace.formatted_address||selectedPlace.name, lat:selectedPlace.geometry.location.lat(), lng:selectedPlace.geometry.location.lng() }, startDate:cin, endDate:cout, days, radiusMiles:parseInt(radius.value,10) }; TM.saveTrip(trip); location.href='questions.html'; };
+</script>
+</body></html>

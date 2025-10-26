@@ -7,7 +7,7 @@
   <div class="card">
     <div class="grid">
       <div class="col-6"><div class="label">Destination</div><div class="section-title" id="dest"></div></div>
-      <div class="col-3"><div class="label">Start date</div><div class="section-title" id="date"></div></div>
+      <div class="col-3"><div class="label">Dates</div><div class="section-title" id="dates"></div></div>
       <div class="col-3"><div class="label">Start time</div><input id="start" type="time" class="input" value="09:00"></div>
     </div>
     <div class="tabs" id="dayTabs"></div>
@@ -23,6 +23,13 @@
       <div class="muted">Dinner</div><div id="slot-dinner" class="slot" data-slot="dinner"></div>
       <div class="muted">Evening</div><div id="slot-night" class="slot" data-slot="night"></div>
     </div>
+  </div>
+
+  <div style="height:8px"></div>
+  <div class="card">
+    <div class="section-title">Where to stay</div>
+    <p class="muted">Find a place close to your saved spots.</p>
+    <button id="airbnb" class="btn primary">Open Airbnb</button>
   </div>
 
   <div class="footerbar">
@@ -58,17 +65,15 @@ function toast(msg){const t=document.getElementById('toast'); if(!t) return; t.t
 </script>
 
 <script>
-const trip=TM.getTrip(); const chosen=TM.getChosen();
-if(!trip.destination||!chosen.length) location.href='select.html';
-dest.textContent=trip.destination.name; date.textContent=trip.startDate;
-let currentDay=0; const totalDays = Math.max(1, trip.days||1);
-const itin = TM.getItin();
+const trip=TM.getTrip(); const chosen=TM.getChosen(); if(!trip.destination||!chosen.length) location.href='select.html';
+dest.textContent=trip.destination.name; dates.textContent=(trip.startDate||'')+(trip.endDate?(' → '+trip.endDate):'');
+let currentDay=0; const totalDays=Math.max(1, trip.days||1);
 function dayDate(i){ const d=new Date(trip.startDate); d.setDate(d.getDate()+i); return d.toISOString().slice(0,10); }
 function renderTabs(){ dayTabs.innerHTML=''; for(let i=0;i<totalDays;i++){ const t=document.createElement('div'); t.className='tab'+(i===currentDay?' active':''); t.textContent='Day '+(i+1)+' • '+dayDate(i); t.onclick=()=>{ saveDay(); currentDay=i; renderTabs(); loadDay(); }; dayTabs.appendChild(t);} dayTitle.textContent='Day '+(currentDay+1)+' • '+dayDate(currentDay); }
 renderTabs();
 function slotEl(id){ return document.querySelector('[data-slot="'+id+'"]'); }
 ['am','lunch','pm','dinner','night'].forEach(s=>{ const el=slotEl(s); el.addEventListener('dragover', e=>{e.preventDefault(); el.classList.add('highlight');}); el.addEventListener('dragleave', ()=>el.classList.remove('highlight')); el.addEventListener('drop', e=>{e.preventDefault(); el.classList.remove('highlight'); const pid=e.dataTransfer.getData('text/plain'); const node=document.querySelector('[data-pid="'+pid+'"]'); if(node) el.appendChild(node); }); });
-function createCard(p){ const d=document.createElement('div'); d.className='cardlet'; d.draggable=true; d.dataset.pid=p.place_id||p.name; const img=document.createElement('img'); const ph=(p.photos&&p.photos[0]&&p.photos[0].getUrl)?p.photos[0].getUrl({maxWidth:200}}):(p.photo||''); if(ph) img.src=ph; else img.style.display='none'; const info=document.createElement('div'); info.style.flex='1'; info.innerHTML='<b>'+ (p.name||'Place') +'</b><br><span class="muted">'+(p.addr||'')+'</span>'; const a=document.createElement('a'); a.href=p.link||'#'; a.target='_blank'; a.className='badge'; a.textContent='Map'; d.appendChild(img); d.appendChild(info); d.appendChild(a); d.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',d.dataset.pid); setTimeout(()=>d.style.opacity=.3)}); d.addEventListener('dragend',()=>d.style.opacity=1); return d; }
+function createCard(p){ const d=document.createElement('div'); d.className='cardlet'; d.draggable=true; d.dataset.pid=p.place_id||p.name; const img=document.createElement('img'); const ph=(p.photos&&p.photos[0]&&p.photos[0].getUrl)?p.photos[0].getUrl({maxWidth:200}):(p.photo||''); if(ph) img.src=ph; else img.style.display='none'; const info=document.createElement('div'); info.style.flex='1'; info.innerHTML='<b>'+ (p.name||'Place') +'</b><br><span class="muted">'+(p.addr||'')+'</span>'; const a=document.createElement('a'); a.href=p.link||'#'; a.target='_blank'; a.className='badge'; a.textContent='Map'; d.appendChild(img); d.appendChild(info); d.appendChild(a); d.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',d.dataset.pid); setTimeout(()=>d.style.opacity=.3)}); d.addEventListener('dragend',()=>d.style.opacity=1); return d; }
 function clearSlots(){ ['am','lunch','pm','dinner','night'].forEach(s=>slotEl(s).innerHTML=''); }
 function seedIfEmpty(){ const used = new Set(); function pick(typeKeyword, slot){ const p = chosen.find(c => !used.has(c.place_id) && ((c.types||[]).includes(typeKeyword) || (c.name||'').toLowerCase().includes(typeKeyword))); if(p){ used.add(p.place_id); slotEl(slot).appendChild(createCard(p)); } } pick('cafe','am'); pick('restaurant','lunch'); pick('tourist_attraction','pm'); pick('restaurant','dinner'); pick('bar','night'); }
 function saveDay(){ const day = {}; ['am','lunch','pm','dinner','night'].forEach(s=>{ day[s]=Array.from(slotEl(s).children).map(x=>x.querySelector('b').textContent); }); const all = TM.getItin(); all[currentDay]=day; TM.saveItin(all); }
@@ -76,8 +81,9 @@ function loadDay(){ clearSlots(); const all = TM.getItin(); const day = all[curr
 loadDay();
 prevDay.onclick = ()=>{ if(currentDay>0){ saveDay(); currentDay--; renderTabs(); loadDay(); } };
 nextDay.onclick = ()=>{ if(currentDay<totalDays-1){ saveDay(); currentDay++; renderTabs(); loadDay(); } };
-function serializeAll(){ saveDay(); const all = TM.getItin(); const out = { dest: trip.destination.name, start: trip.startDate, days: totalDays, startTime: start.value, schedule: {} }; for(let i=0;i<totalDays;i++){ out.schedule['Day '+(i+1)+' '+dayDate(i)] = all[i] || {}; } return out; }
+function serializeAll(){ saveDay(); const all = TM.getItin(); const out = { dest: trip.destination.name, start: trip.startDate, end: trip.endDate, days: totalDays, startTime: start.value, schedule: {} }; for(let i=0;i<totalDays;i++){ out.schedule['Day '+(i+1)+' '+dayDate(i)] = all[i] || {}; } return out; }
 save.onclick = ()=>{ TM.saveTrip(Object.assign(TM.getTrip(), { itinerary: serializeAll() })); toast('Itinerary saved'); };
 export.onclick = ()=>{ const data='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(serializeAll(),null,2)); download.setAttribute('href',data); download.setAttribute('download','tripmate-itinerary.json'); download.click(); };
+airbnb.onclick = ()=>{ const q = encodeURIComponent(trip.destination.name||''); const url = 'https://www.airbnb.com/s/'+q+'/homes?checkin='+(trip.startDate||'')+'&checkout='+(trip.endDate||'')+'&adults=1'; window.open(url, '_blank'); };
 </script>
 </body></html>
