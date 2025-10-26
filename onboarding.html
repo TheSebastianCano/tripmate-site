@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TripMate — Preferences</title>
+<style>
+:root{--brand:#FF385C;--ink:#222;--muted:#6b6f76;--stroke:#ebecef;--radius:16px}
+*{box-sizing:border-box} html,body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial;background:#fff;color:var(--ink)}
+.wrap{max-width:960px;margin:0 auto;padding:20px}
+.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.brand{font-weight:800}
+.card{border:1px solid var(--stroke);border-radius:16px;padding:16px;box-shadow:0 8px 28px rgba(0,0,0,.06);background:#fff}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 16px;border:1px solid var(--stroke);border-radius:12px;background:var(--brand);color:#fff;font-weight:700}
+.btn.ghost{background:#fff;color:var(--ink)}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--stroke);border-radius:999px;background:#fafafa;color:#444;font-size:12px}
+.muted{color:var(--muted)}
+.step{display:none} .step.active{display:block}
+.opt{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.opt button{padding:10px 12px;border:1px solid var(--stroke);background:#fff;border-radius:999px}
+.opt button.sel{background:var(--brand);color:#fff;border-color:transparent}
+.progress{height:8px;background:#f3f4f6;border-radius:999px;overflow:hidden;margin:8px 0}
+.progress>div{height:100%;background:var(--brand);width:0%}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="nav">
+    <div class="brand">TripMate — Tell us your vibe</div>
+    <a class="badge" href="planner.html">Skip → Planner</a>
+  </div>
+
+  <div class="card">
+    <div class="progress"><div id="bar"></div></div>
+    <div id="steps">
+      <div class="step active">
+        <h3>1) Traveling with a pet?</h3>
+        <div class="opt" data-key="petFriendly" data-type="single">
+          <button>Yes</button><button>No</button><button>Sometimes</button>
+        </div>
+      </div>
+      <div class="step">
+        <h3>2) Morning style</h3>
+        <div class="opt" data-key="mornings" data-type="single">
+          <button>Early (7–8am)</button><button>Balanced (9–10am)</button><button>Sleep in (10–11am)</button>
+        </div>
+      </div>
+      <div class="step">
+        <h3>3) Breakfast?</h3>
+        <div class="opt" data-key="breakfast" data-type="single">
+          <button>Yes, sit-down</button><button>Quick coffee</button><button>No breakfast</button>
+        </div>
+      </div>
+      <div class="step">
+        <h3>4) Coffee vibe</h3>
+        <div class="opt" data-key="coffee" data-type="multi">
+          <button>Third-wave cafes</button><button>Classic diners</button><button>Local roasters</button><button>Tea instead</button>
+        </div>
+      </div>
+      <div class="step">
+        <h3>5) Foods you’re excited about</h3>
+        <div class="opt" data-key="food" data-type="multi">
+          <button>Tacos</button><button>Sushi</button><button>BBQ</button><button>Italian</button><button>Vegan/veg</button><button>Michelin</button>
+        </div>
+      </div>
+      <div class="step">
+        <h3>6) Evening energy</h3>
+        <div class="opt" data-key="night" data-type="multi">
+          <button>Craft cocktails</button><button>Live music</button><button>Chill wine bar</button><button>Rooftop views</button><button>Skip nightlife</button>
+        </div>
+      </div>
+      <div class="step">
+        <h3>7) Activities you want</h3>
+        <div class="opt" data-key="activities" data-type="multi">
+          <button>Hiking</button><button>Museums</button><button>Architecture</button><button>Street art</button><button>Shopping</button><button>Beaches</button><button>Running</button><button>Dog parks</button>
+        </div>
+      </div>
+      <div class="step">
+        <h3>8) Day pace</h3>
+        <div class="opt" data-key="pace" data-type="single">
+          <button>Relaxed (3–4 stops)</button><button>Balanced (5–6)</button><button>Max explore (7–8)</button>
+        </div>
+      </div>
+      <div class="step">
+        <h3>9) Preferred meal times</h3>
+        <div class="opt" data-key="meals" data-type="multi">
+          <button>Breakfast 8–9</button><button>Brunch 10–11</button><button>Lunch 12–1</button><button>Coffee 2–3</button><button>Dinner 6–7</button><button>Late dinner 8–9</button>
+        </div>
+      </div>
+      <div class="step">
+        <h3>10) Typical spend per meal</h3>
+        <div class="opt" data-key="budget" data-type="single">
+          <button>$</button><button>$$</button><button>$$$</button><button>Mix</button>
+        </div>
+      </div>
+      <div class="step">
+        <h3>11) Comfortable walking distance</h3>
+        <div class="opt" data-key="walk" data-type="single">
+          <button>5–10 min</button><button>10–20 min</button><button>30+ min</button>
+        </div>
+      </div>
+      <div class="step">
+        <h3>12) Main transportation</h3>
+        <div class="opt" data-key="transport" data-type="single">
+          <button>Driving</button><button>Rideshare/Taxi</button><button>Public transit</button><button>Walking mostly</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:8px"></div>
+    <div style="display:flex;gap:8px">
+      <button id="back" class="btn ghost">← Back</button>
+      <button id="next" class="btn">Next →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// storage
+const TM = {
+  saveProfile(p){localStorage.setItem('tripmate_profile', JSON.stringify(p))},
+  getProfile(){try{return JSON.parse(localStorage.getItem('tripmate_profile')||'{}')}catch(e){return {}}}
+};
+
+const steps = Array.from(document.querySelectorAll('.step'));
+const bar = document.getElementById('bar');
+let idx = 0;
+const answers = TM.getProfile();
+
+function render(){ steps.forEach((s,i)=>s.classList.toggle('active', i===idx)); bar.style.width = ((idx)/(steps.length-1))*100 + '%'; }
+render();
+
+document.querySelectorAll('.opt').forEach(group => {
+  group.addEventListener('click', (e)=>{
+    if(e.target.tagName!=='BUTTON') return;
+    const type = group.dataset.type, key = group.dataset.key;
+    if(type==='single'){ group.querySelectorAll('button').forEach(b=>b.classList.remove('sel')); e.target.classList.add('sel'); answers[key]=e.target.textContent; }
+    else{ e.target.classList.toggle('sel'); answers[key]=Array.from(group.querySelectorAll('button.sel')).map(b=>b.textContent); }
+    TM.saveProfile(answers);
+  });
+});
+
+document.getElementById('next').onclick = ()=>{ if(idx<steps.length-1){ idx++; render(); } else { TM.saveProfile(answers); location.href='planner.html'; } };
+document.getElementById('back').onclick = ()=>{ if(idx>0){ idx--; render(); } else { history.back(); } };
+</script>
+</body>
+</html>

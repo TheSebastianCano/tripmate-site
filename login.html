@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TripMate — Login</title>
+<style>
+:root{--brand:#FF385C;--ink:#222;--muted:#6b6f76;--stroke:#ebecef;--radius:16px}
+*{box-sizing:border-box} html,body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial;background:#fff;color:var(--ink)}
+.wrap{max-width:960px;margin:0 auto;padding:20px}
+.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.brand{font-weight:800;letter-spacing:.2px}
+.card{border:1px solid var(--stroke);border-radius:16px;padding:16px;box-shadow:0 8px 28px rgba(0,0,0,.06);background:#fff}
+.input{width:100%;padding:12px 14px;border:1px solid var(--stroke);border-radius:12px;font-size:16px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 16px;border:1px solid var(--stroke);border-radius:12px;background:var(--brand);color:#fff;font-weight:700}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--stroke);border-radius:999px;background:#fafafa;color:#444;font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
+.col-12{grid-column:span 12}.col-6{grid-column:span 6}
+.muted{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="nav">
+    <div class="brand">TripMate</div>
+    <a class="badge" href="planner.html">Skip → Planner</a>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">Welcome 👋</h2>
+    <p class="muted">Create a lightweight profile so TripMate can tailor trips to your taste. Your info stays on this device.</p>
+    <div class="grid">
+      <div class="col-6">
+        <label class="muted">Name</label>
+        <input id="name" class="input" placeholder="Your name">
+      </div>
+      <div class="col-6">
+        <label class="muted">Email (optional)</label>
+        <input id="email" class="input" placeholder="you@example.com">
+      </div>
+      <div class="col-12">
+        <label class="muted">Google Maps API key (saved locally)</label>
+        <input id="api" class="input" placeholder="AIza...">
+      </div>
+      <div class="col-12">
+        <button id="save" class="btn">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:8px"></div>
+  <div class="card"><b>Privacy</b><br><span class="muted">We never receive your API key or personal data. All data is stored in your browser's localStorage.</span></div>
+</div>
+
+<script>
+// Simple storage helpers
+const TM = {
+  saveKey(k){localStorage.setItem('tripmate_key', k)},
+  getKey(){return localStorage.getItem('tripmate_key')||''},
+  saveUser(u){localStorage.setItem('tripmate_user', JSON.stringify(u))},
+  getUser(){try{return JSON.parse(localStorage.getItem('tripmate_user')||'{}')}catch(e){return {}}}
+};
+
+// Prefill if available
+document.getElementById('api').value = TM.getKey();
+const u = TM.getUser(); if(u.name) document.getElementById('name').value=u.name; if(u.email) document.getElementById('email').value=u.email;
+
+document.getElementById('save').onclick = () => {
+  const name = document.getElementById('name').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const key = document.getElementById('api').value.trim();
+  TM.saveUser({name, email});
+  if(key) TM.saveKey(key);
+  location.href = 'onboarding.html';
+};
+</script>
+</body>
+</html>

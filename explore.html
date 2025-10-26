@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TripMate — Explore</title>
+<style>
+:root{--brand:#FF385C;--ink:#222;--muted:#6b6f76;--stroke:#ebecef;--radius:16px}
+*{box-sizing:border-box} html,body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial;background:#fff;color:var(--ink)}
+.wrap{max-width:960px;margin:0 auto;padding:20px}
+.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.brand{font-weight:800}
+.card{border:1px solid var(--stroke);border-radius:16px;padding:16px;box-shadow:0 8px 28px rgba(0,0,0,.06);background:#fff}
+.input,.select{width:100%;padding:12px 14px;border:1px solid var(--stroke);border-radius:12px;font-size:16px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 16px;border:1px solid var(--stroke);border-radius:12px;background:var(--brand);color:#fff;font-weight:700}
+.btn.ghost{background:#fff;color:var(--ink)}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--stroke);border-radius:999px;background:#fafafa;color:#444;font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
+.col-12{grid-column:span 12}.col-6{grid-column:span 6}.col-8{grid-column:span 8}.col-4{grid-column:span 4}
+.item{border:1px solid var(--stroke);border-radius:12px;padding:12px;display:grid;grid-template-columns:120px 1fr;gap:10px}
+.item img{width:120px;height:90px;object-fit:cover;border-radius:10px;border:1px solid var(--stroke)}
+#map{width:100%;height:320px;border-radius:16px;border:1px solid var(--stroke)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="nav">
+    <div class="brand">TripMate — Explore nearby</div>
+    <a class="badge" href="planner.html">← Planner</a>
+  </div>
+
+  <div class="card">
+    <div class="grid">
+      <div class="col-8">
+        <label class="muted">Destination</label>
+        <input id="dest" class="input" placeholder="City..." autocomplete="off">
+      </div>
+      <div class="col-4">
+        <label class="muted">API key</label>
+        <input id="api" class="input" placeholder="AIza...">
+      </div>
+      <div class="col-12" style="display:flex;gap:8px;margin-top:8px">
+        <button id="load" class="btn">Load Maps</button>
+        <select id="cat" class="select" style="max-width:240px">
+          <option value="tourist_attraction">Top attractions</option>
+          <option value="park">Parks & hikes</option>
+          <option value="museum">Museums</option>
+          <option value="shopping_mall">Shopping</option>
+          <option value="bar">Bars</option>
+          <option value="cafe">Cafes</option>
+          <option value="restaurant">Restaurants</option>
+          <option value="art_gallery">Art galleries</option>
+        </select>
+        <button id="search" class="btn ghost">Explore 80 km (≈50 mi)</button>
+      </div>
+      <div class="col-12"><div id="map"></div></div>
+    </div>
+  </div>
+
+  <div style="height:8px"></div>
+  <div class="card">
+    <h3 style="margin:0">Results</h3>
+    <div id="results" style="display:flex;flex-direction:column;gap:10px;margin-top:10px"></div>
+  </div>
+</div>
+
+<script>
+const TM = { getKey(){return localStorage.getItem('tripmate_key')||''}, saveKey(k){localStorage.setItem('tripmate_key',k)} };
+document.getElementById('api').value = TM.getKey();
+
+let map, placesService, autocomplete, selectedPlace;
+
+document.getElementById('load').onclick = ()=>{
+  const k=document.getElementById('api').value.trim(); if(!k) return alert('Paste API key');
+  TM.saveKey(k);
+  const s=document.createElement('script'); s.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(k)+'&libraries=places&callback=initMap'; s.async=true; s.defer=true; document.head.appendChild(s);
+};
+
+window.initMap = function(){
+  map = new google.maps.Map(document.getElementById('map'), {center:{lat:30.2672,lng:-97.7431},zoom:12});
+  placesService = new google.maps.places.PlacesService(map);
+  autocomplete = new google.maps.places.Autocomplete(document.getElementById('dest'), {types:['(cities)']});
+  autocomplete.addListener('place_changed', ()=>{ selectedPlace=autocomplete.getPlace(); if(!selectedPlace.geometry) return; map.setCenter(selectedPlace.geometry.location); map.setZoom(10); });
+};
+
+document.getElementById('search').onclick = ()=>{
+  if(!selectedPlace) return alert('Pick a destination first');
+  const type = document.getElementById('cat').value;
+  const loc = selectedPlace.geometry.location;
+  const resultsEl = document.getElementById('results'); resultsEl.innerHTML='';
+  // Places Nearby: 50,000m max; use 80,000m with textSearch (but we’ll do 50,000m for reliability across accounts)
+  placesService.nearbySearch({location:loc, radius:50000, type}, (results, status)=>{
+    if(status!==google.maps.places.PlacesServiceStatus.OK || !results||!results.length){ resultsEl.innerHTML='<div class="muted">No results.</div>'; return; }
+    results.sort((a,b)=>(b.rating||0)-(a.rating||0)).slice(0,20).forEach(r=>{
+      const img = r.photos&&r.photos[0]?r.photos[0].getUrl({maxWidth:400}):'';
+      const addr = r.vicinity||'';
+      const link = 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(r.name+' '+addr);
+      const card = document.createElement('div'); card.className='item';
+      card.innerHTML = (img?('<img src="'+img+'">'):'<div></div>') + '<div><b>'+r.name+'</b> <span class="muted">• '+(r.rating||'N/A')+' ★</span><br><span class="muted">'+addr+'</span><br><div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap"><a class="badge" target="_blank" href="'+link+'">Open in Maps</a><a class="badge" target="_blank" href="https://www.airbnb.com/s/homes?query='+encodeURIComponent(addr||r.name)+'">Stays nearby</a></div></div>';
+      resultsEl.appendChild(card);
+    });
+  });
+};
+
+// Auto-load if key exists
+const k=TM.getKey(); if(k){ const s=document.createElement('script'); s.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(k)+'&libraries=places&callback=initMap'; s.async=true; s.defer=true; document.head.appendChild(s);}
+</script>
+</body>
+</html>
